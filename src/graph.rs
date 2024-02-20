@@ -1,4 +1,6 @@
-use nalgebra::{DMatrix, Dyn, MatrixView, OMatrix, SymmetricEigen, U1};
+#[allow(dead_code)]
+
+use nalgebra::{DMatrix, Dyn, MatrixView, OMatrix, SymmetricEigen, U1, OVector};
 use std::fmt::{Display, Formatter};
 
 const EPSILON: f64 = 0.001;
@@ -9,6 +11,7 @@ pub struct LapGraph {
     laplacian: OMatrix<f64, Dyn, Dyn>,
     vertex_count: usize,
     eigen_cache: Option<SymmetricEigen<f64, Dyn>>,
+    eigenvalue_cache: Option<OVector<f64, Dyn>>,
 }
 
 impl LapGraph {
@@ -17,6 +20,7 @@ impl LapGraph {
             laplacian: DMatrix::<f64>::zeros(vertex_count, vertex_count),
             vertex_count,
             eigen_cache: None,
+            eigenvalue_cache: None,
         }
     }
 
@@ -29,6 +33,7 @@ impl LapGraph {
             laplacian,
             vertex_count,
             eigen_cache: None,
+            eigenvalue_cache: None,
         }
     }
 
@@ -53,6 +58,7 @@ impl LapGraph {
             self.laplacian[(j, j)] += 1.0;
 
             self.eigen_cache = None;
+            self.eigenvalue_cache = None;
         }
     }
 
@@ -76,16 +82,17 @@ impl LapGraph {
             self.laplacian[(j, j)] -= 1.0;
 
             self.eigen_cache = None;
+            self.eigenvalue_cache = None;
         }
     }
 
     pub fn eigenvalues(&mut self) -> MatrixView<'_, f64, Dyn, Dyn, U1, Dyn> {
-        if self.eigen_cache.is_none() {
+        if self.eigenvalue_cache.is_none() {
             let _ = self
-                .eigen_cache
-                .insert(self.laplacian.clone_owned().symmetric_eigen());
+                .eigenvalue_cache
+                .insert(self.laplacian.symmetric_eigenvalues());
         }
-        self.eigen_cache.as_ref().unwrap().eigenvalues.as_view()
+        self.eigenvalue_cache.as_ref().unwrap().as_view()
     }
 
     pub fn eigenvectors(&mut self) -> MatrixView<'_, f64, Dyn, Dyn, U1, Dyn> {
@@ -93,6 +100,8 @@ impl LapGraph {
             let _ = self
                 .eigen_cache
                 .insert(self.laplacian.clone_owned().symmetric_eigen());
+
+            // Overwrite eigenvalue_cache?
         }
         self.eigen_cache.as_ref().unwrap().eigenvectors.as_view()
     }
@@ -158,6 +167,28 @@ impl LapGraph {
         }
     }
 
+    pub fn regular(&self) -> bool {
+        let b = (0..self.vertex_count).map(|i| self.laplacian[(i, i)])
+            .skip_while(|&p| p == 0.0).next();
+
+        if b.is_none() {
+            return true;
+        }
+
+        let d = b.unwrap();
+
+        (0..self.vertex_count).map(|i| self.laplacian[(i, i)])
+            .all(|x| {
+                (x == 0.0) || (x == d)
+            })
+    }
+
+    // Combine vertex a into vertex be
+    // No self-loops are possible
+    pub fn contraction(&mut self, a: usize, b: usize) {
+
+    }
+
     pub fn transfer(&self, other: &mut Self) {
         self.laplacian.clone_into(&mut other.laplacian);
         other.vertex_count = self.vertex_count;
@@ -167,6 +198,15 @@ impl LapGraph {
 
 impl Display for LapGraph {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.laplacian)
+        let mut itr = (0..self.vertex_count)
+            .flat_map(|a| (
+                (a+1)..self.vertex_count
+            )
+            .map(move |b| (a, b))
+            .filter(|(a, b)| self.laplacian[(*a, *b)] == -1.0)
+        );
+
+        write!(f, "{:?}", itr.collect::<Vec<(usize, usize)>>())
+        
     }
 }

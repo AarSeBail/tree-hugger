@@ -1,7 +1,7 @@
 use crate::graph::LapGraph;
 use num::integer::binomial;
 
-fn partial_brute_max_recursive(
+pub fn partial_brute_max_recursive(
     working_graph: &mut LapGraph,
     target: &mut LapGraph,
     current_best: &mut f64,
@@ -49,15 +49,29 @@ fn partial_brute_max(m: usize, k: usize) -> LapGraph {
 }
 
 pub fn brute_max_spanning_trees(m: usize) -> LapGraph {
-    // This heuristic actually fails for numbers under 9, but that is of minor consequence
-    // Regarding its efficacy, however, it is worth noting that
-    // During testing, m=8 performed in 8 seconds
-    // While m=9 performed in 0.7 seconds
-    let lower_bound = partial_brute_max(m, (m + 1) / 2)
+    /* Cheaply find a lower bound, then use it to choose
+       a vertex count to search with.
+       For m=9 and m=10, both search on K_7 and take
+       0.84 and 1.05 seconds respectively.
+       For m=11, the search occurs on K_8,
+       and takes 1 minute and 20 seconds.
+       Unfortunately, the maximizer for m=11
+       has 7 vertices, so we are doing more
+       work than is necessary.
+    */
+    let h = if m < 7 {
+        (m + 4)/2
+    }else {
+        (m + 2)/2
+    };
+
+    let lower_bound = partial_brute_max(m, h)
         .count_spanning_trees()
         .round() as usize;
 
-    let mut n = m / 2;
+    // let lower_bound = 0;
+
+    let mut n = h;
 
     while binomial(m, n) >= lower_bound && n < m {
         n += 1;
