@@ -49,7 +49,10 @@ fn partial_brute_max(m: usize, k: usize) -> LapGraph {
 }
 
 pub fn brute_max_spanning_trees(m: usize) -> LapGraph {
-    // This heuristic actually fails for numbers under 8, but that is of little consequence
+    // This heuristic actually fails for numbers under 9, but that is of minor consequence
+    // Regarding its efficacy, however, it is worth noting that
+    // During testing, m=8 performed in 8 seconds
+    // While m=9 performed in 0.7 seconds
     let lower_bound = partial_brute_max(m, (m + 1) / 2)
         .count_spanning_trees()
         .round() as usize;
