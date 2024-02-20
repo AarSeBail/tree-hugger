@@ -5,6 +5,7 @@ A rust binary for computing M edge graphs which obtain the largest number of spa
 Currently Implemented
 - Kirchhoff's Theorem
 - Brute force with a nice heuristic, reducing the computational cost considerably
+- Multithreading
 
 Possible Future Work
 - Tricks using eigenvalue stability
