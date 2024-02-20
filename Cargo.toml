@@ -7,3 +7,12 @@ edition = "2021"
 
 [dependencies]
 nalgebra = "0.32.4"
+num = "0.4.1"
+
+[profile.release]
+lto = false
+codegen-units = 1
+opt-level = 3
+
+[build]
+rustflags = ["-C", "target-cpu=native"]

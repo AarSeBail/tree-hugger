@@ -1,29 +1,14 @@
-use crate::graph::LapGraph;
-
+#[allow(unused)]
 mod brute;
-mod utils;
 mod graph;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    let M = args.last().unwrap().parse::<usize>().unwrap();
+    let m = args.last().unwrap().parse::<usize>().unwrap();
 
-    let mut A = LapGraph::<true>::empty(M);
+    let mut res = brute::brute_max_spanning_trees(m);
 
-    A.add_edge(0, 2);
-
-    println!("{A}");
-
-    // let mut L = A.eigenvalues();
-
-    A.remove_edge(0, 2);
-
-    println!("{A}");
-
-    // println!("{L}");
-
-    // L = A.eigenvalues();
-
-    // println!("{L}");
+    println!("{res}");
+    println!("{}", res.count_spanning_trees());
 }
