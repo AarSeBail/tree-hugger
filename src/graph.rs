@@ -1,4 +1,4 @@
-#[allow(dead_code)]
+#![allow(dead_code)]
 
 use nalgebra::{DMatrix, Dyn, MatrixView, OMatrix, SymmetricEigen, U1, OVector};
 use std::fmt::{Display, Formatter};
@@ -224,7 +224,6 @@ impl Display for LapGraph {
             .filter(|(a, b)| self.laplacian[(*a, *b)] != 0.0)
         ).flat_map(|(a, b)| (0..(-self.laplacian[(a, b)].round() as usize)).map(move |_| (a, b)));
 
-        write!(f, "{:?}\n", itr.collect::<Vec<(usize, usize)>>());
-        write!(f, "{:?}", self.laplacian)
+        write!(f, "{:?}\n", itr.collect::<Vec<(usize, usize)>>())
     }
 }

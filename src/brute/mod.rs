@@ -60,7 +60,7 @@ pub fn partial_brute_max_recursive<const MULTIGRAPH: bool>(
 }
 
 fn partial_brute_max(m: usize, k: usize, multigraph: bool) -> LapGraph {
-    println!("Complexity: K_{k}");
+    println!("Searching Complexity: K_{k}");
     let mut working_graph = LapGraph::empty(k);
     let mut target = LapGraph::empty(k);
     let mut best: f64 = 0.0;
@@ -81,12 +81,12 @@ fn partial_brute_max(m: usize, k: usize, multigraph: bool) -> LapGraph {
         partial_brute_max_recursive::<false>(&mut working_graph, &mut target, &mut best, &mut comp, m, &choices);
     }
 
-    println!("Terminal graphs searched: {comp}");
+    println!("Terminal Graphs Searched: {comp}");
 
     target
 }
 
-pub fn brute_max_spanning_trees(m: usize) -> LapGraph {
+pub fn brute_max_spanning_trees(m: usize, multigraphs: bool) -> LapGraph {
     /* Cheaply find a lower bound, then use it to choose
        a vertex count to search with.
        For m=9 and m=10, both search on K_7 and take
@@ -103,7 +103,9 @@ pub fn brute_max_spanning_trees(m: usize) -> LapGraph {
         (m + 2)/2
     };
 
-    let lower_bound = partial_brute_max(m, h, false)
+    println!("Performing Heuristic Search");
+
+    let lower_bound = partial_brute_max(m, h, multigraphs)
         .count_spanning_trees()
         .round() as usize;
 
@@ -115,37 +117,7 @@ pub fn brute_max_spanning_trees(m: usize) -> LapGraph {
         n += 1;
     }
 
-    partial_brute_max(m, n, false)
-}
+    println!("Performing Deductive Search");
 
-pub fn brute_multigraph_spanning_trees(m: usize) -> LapGraph {
-    /* Cheaply find a lower bound, then use it to choose
-       a vertex count to search with.
-       For m=9 and m=10, both search on K_7 and take
-       0.84 and 1.05 seconds respectively.
-       For m=11, the search occurs on K_8,
-       and takes 1 minute and 20 seconds.
-       Unfortunately, the maximizer for m=11
-       has 7 vertices, so we are doing more
-       work than is necessary.
-    */
-    let h = if m < 7 {
-        (m + 4)/2
-    }else {
-        (m + 2)/2
-    };
-
-    let lower_bound = partial_brute_max(m, h, true)
-        .count_spanning_trees()
-        .round() as usize;
-
-    // let lower_bound = 0;
-
-    let mut n = h;
-
-    while binomial(m, n) >= lower_bound && n < m {
-        n += 1;
-    }
-
-    partial_brute_max(m, n, true)
+    partial_brute_max(m, n, multigraphs)
 }
