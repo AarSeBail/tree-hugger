@@ -28,7 +28,9 @@ pub fn partial_brute_max_recursive<const MULTIGRAPH: bool>(
 
     for (i, (a, b)) in choices.iter().enumerate() {
         // An incredible heuristic
-        if working_graph.is_adjacent(*a, *b) {
+
+        // Why did the negation of this work?
+        if !working_graph.is_adjacent(*a, *b) {
             if flag {
                 continue;
             }
