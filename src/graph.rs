@@ -51,15 +51,13 @@ impl LapGraph {
             self.vertex_count
         );
 
-        if self.laplacian[(i, j)] == 0.0 {
-            self.laplacian[(i, j)] = -1.0;
-            self.laplacian[(j, i)] = -1.0;
-            self.laplacian[(i, i)] += 1.0;
-            self.laplacian[(j, j)] += 1.0;
+        self.laplacian[(i, j)] -= 1.0;
+        self.laplacian[(j, i)] -= 1.0;
+        self.laplacian[(i, i)] += 1.0;
+        self.laplacian[(j, j)] += 1.0;
 
-            self.eigen_cache = None;
-            self.eigenvalue_cache = None;
-        }
+        self.eigen_cache = None;
+        self.eigenvalue_cache = None;
     }
 
     pub fn remove_edge(&mut self, i: usize, j: usize) {
@@ -75,15 +73,13 @@ impl LapGraph {
             self.vertex_count
         );
 
-        if self.laplacian[(i, j)] == -1.0 {
-            self.laplacian[(i, j)] = 0.0;
-            self.laplacian[(j, i)] = 0.0;
-            self.laplacian[(i, i)] -= 1.0;
-            self.laplacian[(j, j)] -= 1.0;
+        self.laplacian[(i, j)] += 1.0;
+        self.laplacian[(j, i)] += 1.0;
+        self.laplacian[(i, i)] -= 1.0;
+        self.laplacian[(j, j)] -= 1.0;
 
-            self.eigen_cache = None;
-            self.eigenvalue_cache = None;
-        }
+        self.eigen_cache = None;
+        self.eigenvalue_cache = None;
     }
 
     pub fn eigenvalues(&mut self) -> MatrixView<'_, f64, Dyn, Dyn, U1, Dyn> {
@@ -106,7 +102,19 @@ impl LapGraph {
         self.eigen_cache.as_ref().unwrap().eigenvectors.as_view()
     }
 
+    // Notably, returns false for empty graphs
     pub fn connected(&mut self) -> bool {
+        self.count_components() == 1
+    }
+
+    // Tests if the edge ab is adjacent to the graph
+    pub fn is_adjacent(&self, a: usize, b: usize) -> bool {
+        self.laplacian[(a, a)] != 0.0 || self.laplacian[(b, b)] != 0.0
+    }
+
+    // Again, following the precedence that degree 0 vertices
+    // do not exist
+    pub fn count_components(&mut self) -> usize {
         let num_zeros = self
             .eigenvalues()
             .iter()
@@ -114,7 +122,7 @@ impl LapGraph {
 
         let num_isolates =
             self.laplacian.diagonal().iter().fold(
-                1,
+                0,
                 |acc, &x| {
                     if x == 0.0 {
                         acc + 1
@@ -124,10 +132,10 @@ impl LapGraph {
                 },
             );
 
-        num_zeros == num_isolates
+        num_zeros - num_isolates
     }
 
-    pub(crate) fn fully_connected(&mut self) -> bool {
+    pub fn fully_connected(&mut self) -> bool {
         let num_zeros = self
             .eigenvalues()
             .iter()
@@ -161,7 +169,7 @@ impl LapGraph {
             );
 
         if non_zeros + 1 == expected_non_zeros {
-            approx / (expected_non_zeros as f64)
+            (approx / (expected_non_zeros as f64)).round()
         } else {
             0.0
         }
@@ -183,9 +191,19 @@ impl LapGraph {
             })
     }
 
-    // Combine vertex a into vertex be
+    pub fn degree(&self, v: usize) -> usize {
+        self.laplacian[(v, v)] as usize
+    }
+
+    // Combine vertex a into vertex b
+    // Results in multigraphs
     // No self-loops are possible
-    pub fn contraction(&mut self, a: usize, b: usize) {
+    // If cache is Some, caches the row of a
+    pub fn contraction(&mut self, a: usize, b: usize, cache: Option<&mut OVector<f64, Dyn>>) {
+
+    }
+
+    pub fn reverse_contraction(&mut self, a: usize, b: usize, cache: &mut OVector<f64, Dyn>) {
 
     }
 
@@ -203,10 +221,10 @@ impl Display for LapGraph {
                 (a+1)..self.vertex_count
             )
             .map(move |b| (a, b))
-            .filter(|(a, b)| self.laplacian[(*a, *b)] == -1.0)
-        );
+            .filter(|(a, b)| self.laplacian[(*a, *b)] != 0.0)
+        ).flat_map(|(a, b)| (0..(-self.laplacian[(a, b)].round() as usize)).map(move |_| (a, b)));
 
-        write!(f, "{:?}", itr.collect::<Vec<(usize, usize)>>())
-        
+        write!(f, "{:?}\n", itr.collect::<Vec<(usize, usize)>>());
+        write!(f, "{:?}", self.laplacian)
     }
 }

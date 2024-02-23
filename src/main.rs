@@ -1,8 +1,9 @@
-#[allow(unused)]
+#![allow(dead_code)]
 mod brute;
 mod graph;
-mod brute_threaded;
 
+
+// m = 20    S = 33000
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -14,7 +15,7 @@ fn main() {
         4
     };
 
-    let mut res = brute_threaded::threaded_brute_max_spanning_trees(m, n);
+    let mut res = brute::brute_multigraph_spanning_trees(m);
 
     println!("Graph: {res}");
     println!("# Spanning Trees: {}", res.count_spanning_trees());
