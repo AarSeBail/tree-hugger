@@ -1,9 +1,10 @@
-use crate::graph::LapGraph;
+use crate::graph::{graph_type, LapGraph};
 use num::integer::binomial;
+use crate::graph::graph_type::Erased;
 
-pub fn partial_brute_max_recursive<const MULTIGRAPH: bool>(
-    working_graph: &mut LapGraph,
-    target: &mut LapGraph,
+pub fn partial_brute_max_recursive<T: graph_type::GraphType>(
+    working_graph: &mut LapGraph<T>,
+    target: &mut LapGraph<T>,
     current_best: &mut f64,
     num_comps: &mut usize,
     m: usize,
@@ -20,26 +21,28 @@ pub fn partial_brute_max_recursive<const MULTIGRAPH: bool>(
     }
 
     // Bad heuristic, it actually makes it slower
-    /*if working_graph.count_components() > m + 1 {
+    // Lower gates on the values of m are certainly too aggressive
+    /*if working_graph.count_components() > m {
         return;
     }*/
 
     let mut flag = false;
 
     for (i, (a, b)) in choices.iter().enumerate() {
-        // An incredible heuristic
-
-        // Why did the negation of this work?
+        // A not-incredible heuristic
+        // This marks the site of a dead and buried heuristic
+        // Contractions are the future, I've exhausted
+        // all reasonable heuristics
         if !working_graph.is_adjacent(*a, *b) {
             if flag {
                 continue;
             }
-            flag = true
+            flag = true;
         }
 
         working_graph.add_edge(*a, *b);
-        if MULTIGRAPH {
-            partial_brute_max_recursive::<MULTIGRAPH>(
+        if T::MULTI_EDGES {
+            partial_brute_max_recursive::<T>(
                 working_graph,
                 target,
                 current_best,
@@ -48,7 +51,7 @@ pub fn partial_brute_max_recursive<const MULTIGRAPH: bool>(
                 &choices,
             );
         }else {
-            partial_brute_max_recursive::<MULTIGRAPH>(
+            partial_brute_max_recursive::<T>(
                 working_graph,
                 target,
                 current_best,
@@ -61,7 +64,7 @@ pub fn partial_brute_max_recursive<const MULTIGRAPH: bool>(
     }
 }
 
-fn partial_brute_max(m: usize, k: usize, multigraph: bool) -> LapGraph {
+fn partial_brute_max<T: graph_type::GraphType>(m: usize, k: usize) -> LapGraph<T> {
     println!("Searching Complexity: K_{k}");
     let mut working_graph = LapGraph::empty(k);
     let mut target = LapGraph::empty(k);
@@ -77,18 +80,14 @@ fn partial_brute_max(m: usize, k: usize, multigraph: bool) -> LapGraph {
 
     let mut comp = 0;
 
-    if multigraph {
-        partial_brute_max_recursive::<true>(&mut working_graph, &mut target, &mut best, &mut comp, m, &choices);
-    }else {
-        partial_brute_max_recursive::<false>(&mut working_graph, &mut target, &mut best, &mut comp, m, &choices);
-    }
+    partial_brute_max_recursive::<T>(&mut working_graph, &mut target, &mut best, &mut comp, m, &choices);
 
     println!("Terminal Graphs Searched: {comp}");
 
     target
 }
 
-pub fn brute_max_spanning_trees(m: usize, multigraphs: bool) -> LapGraph {
+pub fn brute_max_spanning_trees(m: usize, multigraphs: bool) -> LapGraph<Erased> {
     /* Cheaply find a lower bound, then use it to choose
        a vertex count to search with.
        For m=9 and m=10, both search on K_7 and take
@@ -107,11 +106,15 @@ pub fn brute_max_spanning_trees(m: usize, multigraphs: bool) -> LapGraph {
 
     println!("Performing Heuristic Search");
 
-    let lower_bound = partial_brute_max(m, h, multigraphs)
+    let mut estimate = if multigraphs {
+        partial_brute_max::<graph_type::Multigraph>(m, h).erase_type()
+    }else {
+        partial_brute_max::<graph_type::Simple>(m, h).erase_type()
+    };
+
+    let lower_bound = estimate
         .count_spanning_trees()
         .round() as usize;
-
-    // let lower_bound = 0;
 
     let mut n = h;
 
@@ -121,5 +124,9 @@ pub fn brute_max_spanning_trees(m: usize, multigraphs: bool) -> LapGraph {
 
     println!("Performing Deductive Search");
 
-    partial_brute_max(m, n, multigraphs)
+    if multigraphs {
+        partial_brute_max::<graph_type::Multigraph>(m, n).erase_type()
+    }else {
+        partial_brute_max::<graph_type::Simple>(m, n).erase_type()
+    }
 }

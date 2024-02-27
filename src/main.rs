@@ -5,8 +5,8 @@ mod graph;
 
 use std::cmp::max;
 use std::error::Error;
-use clap::{Args, Parser, Subcommand};
-use crate::graph::LapGraph;
+use clap::{Parser, Subcommand};
+use crate::graph::{graph_type, LapGraph};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -18,11 +18,11 @@ struct Cli {
 fn parse_edge(s: &str) -> Result<(usize, usize), Box<dyn Error + Send + Sync + 'static>>
 {
     let paren_1 = s.find('(')
-        .ok_or_else(|| format!("Malformed edge"))?;
+        .ok_or_else(|| "Malformed edge")?;
     let paren_2 = s.find(')')
-        .ok_or_else(|| format!("Malformed edge"))?;
+        .ok_or_else(|| "Malformed edge")?;
     let pos = s.find(',')
-        .ok_or_else(|| format!("Malformed edge"))?;
+        .ok_or_else(|| "Malformed edge")?;
     Ok((s[paren_1+1..pos].parse()?, s[pos + 1..paren_2].parse()?))
 }
 
@@ -62,7 +62,7 @@ fn main() {
                 max_vertex = max(*a, max_vertex);
                 max_vertex = max(*b, max_vertex);
             }
-            let mut graph = LapGraph::empty(max_vertex + 1);
+            let mut graph = LapGraph::<graph_type::Multigraph>::empty(max_vertex + 1);
 
             for (a, b) in edges.iter() {
                 graph.add_edge(*a, *b);

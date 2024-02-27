@@ -1,26 +1,31 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused_variables)]
 
 use nalgebra::{DMatrix, Dyn, MatrixView, OMatrix, SymmetricEigen, U1, OVector};
 use std::fmt::{Display, Formatter};
+use std::marker::PhantomData;
+
+pub mod graph_type;
 
 const EPSILON: f64 = 0.001;
 
 #[derive(Debug, Clone)]
-pub struct LapGraph {
+pub struct LapGraph<T: graph_type::GraphType> {
     // f64 is actually quite useful here, despite its scariness
     laplacian: OMatrix<f64, Dyn, Dyn>,
     vertex_count: usize,
     eigen_cache: Option<SymmetricEigen<f64, Dyn>>,
     eigenvalue_cache: Option<OVector<f64, Dyn>>,
+    _p: PhantomData<T>,
 }
 
-impl LapGraph {
+impl<T: graph_type::GraphType> LapGraph<T> {
     pub fn empty(vertex_count: usize) -> Self {
         Self {
             laplacian: DMatrix::<f64>::zeros(vertex_count, vertex_count),
             vertex_count,
             eigen_cache: None,
             eigenvalue_cache: None,
+            _p: PhantomData
         }
     }
 
@@ -34,6 +39,7 @@ impl LapGraph {
             vertex_count,
             eigen_cache: None,
             eigenvalue_cache: None,
+            _p: PhantomData
         }
     }
 
@@ -212,17 +218,31 @@ impl LapGraph {
         other.vertex_count = self.vertex_count;
         other.eigen_cache = None;
     }
+
+    pub fn convert_type<R: graph_type::GraphType>(self) -> LapGraph<R> {
+        LapGraph::<R> {
+            laplacian: self.laplacian,
+            vertex_count: self.vertex_count,
+            eigen_cache: self.eigen_cache,
+            eigenvalue_cache: self.eigenvalue_cache,
+            _p: PhantomData
+        }
+    }
+
+    pub fn erase_type(self) -> LapGraph<graph_type::Erased> {
+        self.convert_type()
+    }
 }
 
-impl Display for LapGraph {
+impl<T: graph_type::GraphType> Display for LapGraph<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let mut itr = (0..self.vertex_count)
+        let itr = (0..self.vertex_count)
             .flat_map(|a| (
                 (a+1)..self.vertex_count
             )
-            .map(move |b| (a, b))
-            .filter(|(a, b)| self.laplacian[(*a, *b)] != 0.0)
-        ).flat_map(|(a, b)| (0..(-self.laplacian[(a, b)].round() as usize)).map(move |_| (a, b)));
+                .map(move |b| (a, b))
+                .filter(|(a, b)| self.laplacian[(*a, *b)] != 0.0)
+            ).flat_map(|(a, b)| (0..(-self.laplacian[(a, b)].round() as usize)).map(move |_| (a, b)));
 
         write!(f, "{:?}\n", itr.collect::<Vec<(usize, usize)>>())
     }
