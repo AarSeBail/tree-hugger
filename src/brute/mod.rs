@@ -9,6 +9,7 @@ pub fn partial_brute_max_recursive<T: graph_type::GraphType>(
     num_comps: &mut usize,
     m: usize,
     choices: &[(usize, usize)],
+    search_markers: &mut Vec<Vec<bool>>
 ) {
     if m == 0 {
         *num_comps += 1;
@@ -20,24 +21,31 @@ pub fn partial_brute_max_recursive<T: graph_type::GraphType>(
         return;
     }
 
-    // Bad heuristic, it actually makes it slower
-    // Lower gates on the values of m are certainly too aggressive
-    /*if working_graph.count_components() > m {
-        return;
-    }*/
-
     let mut flag = false;
 
     for (i, (a, b)) in choices.iter().enumerate() {
-        // A not-incredible heuristic
-        // This marks the site of a dead and buried heuristic
-        // Contractions are the future, I've exhausted
-        // all reasonable heuristics
-        if !working_graph.is_adjacent(*a, *b) {
-            if flag {
-                continue;
+        // Quite a good heuristic
+        // m=12 took 21 seconds now and only searched 6172601 graphs
+        match (working_graph.isolated(*a), working_graph.isolated(*b)) {
+            (true, true) => {
+                if flag {
+                    continue
+                }
+                flag = true
             }
-            flag = true;
+            (true, false) => {
+                if search_markers[m-1][*b] {
+                    continue
+                }
+                search_markers[m-1][*b] = true
+            }
+            (false, true) => {
+                if search_markers[m-1][*a] {
+                    continue
+                }
+                search_markers[m-1][*a] = true
+            }
+            (false, false) => {}
         }
 
         working_graph.add_edge(*a, *b);
@@ -49,6 +57,7 @@ pub fn partial_brute_max_recursive<T: graph_type::GraphType>(
                 num_comps,
                 m - 1,
                 &choices,
+                search_markers
             );
         }else {
             partial_brute_max_recursive::<T>(
@@ -58,16 +67,20 @@ pub fn partial_brute_max_recursive<T: graph_type::GraphType>(
                 num_comps,
                 m - 1,
                 &choices[(i + 1)..],
+                search_markers
             );
         }
         working_graph.remove_edge(*a, *b);
     }
+    search_markers[m - 1].fill(false);
 }
 
 fn partial_brute_max<T: graph_type::GraphType>(m: usize, k: usize) -> LapGraph<T> {
     println!("Searching Complexity: K_{k}");
     let mut working_graph = LapGraph::empty(k);
     let mut target = LapGraph::empty(k);
+    // Preallocated markers
+    let mut search_markers = vec![vec![false; k]; m - 1];
     let mut best: f64 = 0.0;
 
     let mut choices = vec![];
@@ -80,7 +93,10 @@ fn partial_brute_max<T: graph_type::GraphType>(m: usize, k: usize) -> LapGraph<T
 
     let mut comp = 0;
 
-    partial_brute_max_recursive::<T>(&mut working_graph, &mut target, &mut best, &mut comp, m, &choices);
+    if let Some((a, b)) = choices.pop() {
+        working_graph.add_edge(a, b);
+        partial_brute_max_recursive::<T>(&mut working_graph, &mut target, &mut best, &mut comp, m - 1, &choices, &mut search_markers);
+    }
 
     println!("Terminal Graphs Searched: {comp}");
 

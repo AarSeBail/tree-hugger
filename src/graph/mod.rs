@@ -43,7 +43,7 @@ impl<T: graph_type::GraphType> LapGraph<T> {
         }
     }
 
-    pub fn add_edge(&mut self, i: usize, j: usize) {
+    pub fn add_edge(&mut self, i: usize, j: usize) -> bool {
         debug_assert!(
             i != j,
             "LapGraph::<{}>::add_edge does not support self loops",
@@ -57,16 +57,21 @@ impl<T: graph_type::GraphType> LapGraph<T> {
             self.vertex_count
         );
 
-        self.laplacian[(i, j)] -= 1.0;
-        self.laplacian[(j, i)] -= 1.0;
-        self.laplacian[(i, i)] += 1.0;
-        self.laplacian[(j, j)] += 1.0;
+        if T::MULTI_EDGES || self.laplacian[(i, j)] == 0.0 {
+            self.laplacian[(i, j)] -= 1.0;
+            self.laplacian[(j, i)] -= 1.0;
+            self.laplacian[(i, i)] += 1.0;
+            self.laplacian[(j, j)] += 1.0;
 
-        self.eigen_cache = None;
-        self.eigenvalue_cache = None;
+            self.eigen_cache = None;
+            self.eigenvalue_cache = None;
+            true
+        }else {
+            false
+        }
     }
 
-    pub fn remove_edge(&mut self, i: usize, j: usize) {
+    pub fn remove_edge(&mut self, i: usize, j: usize) -> bool {
         debug_assert!(
             i != j,
             "LapGraph::<{}>::remove_edge does not support self loops",
@@ -79,13 +84,18 @@ impl<T: graph_type::GraphType> LapGraph<T> {
             self.vertex_count
         );
 
-        self.laplacian[(i, j)] += 1.0;
-        self.laplacian[(j, i)] += 1.0;
-        self.laplacian[(i, i)] -= 1.0;
-        self.laplacian[(j, j)] -= 1.0;
+        if self.laplacian[(i, j)] != 0.0 {
+            self.laplacian[(i, j)] += 1.0;
+            self.laplacian[(j, i)] += 1.0;
+            self.laplacian[(i, i)] -= 1.0;
+            self.laplacian[(j, j)] -= 1.0;
 
-        self.eigen_cache = None;
-        self.eigenvalue_cache = None;
+            self.eigen_cache = None;
+            self.eigenvalue_cache = None;
+            true
+        }else {
+            false
+        }
     }
 
     pub fn eigenvalues(&mut self) -> MatrixView<'_, f64, Dyn, Dyn, U1, Dyn> {
@@ -197,28 +207,19 @@ impl<T: graph_type::GraphType> LapGraph<T> {
             })
     }
 
+    #[inline]
     pub fn degree(&self, v: usize) -> usize {
         self.laplacian[(v, v)] as usize
     }
 
-    // Combine vertex a into vertex b
-    // Results in multigraphs
-    // No self-loops are possible
-    // If cache is Some, caches the row of a
-    pub fn contraction(&mut self, a: usize, b: usize, cache: Option<&mut OVector<f64, Dyn>>) {
-
-    }
-
-    pub fn reverse_contraction(&mut self, a: usize, b: usize, cache: &mut OVector<f64, Dyn>) {
-
-    }
-
+    #[inline]
     pub fn transfer(&self, other: &mut Self) {
         self.laplacian.clone_into(&mut other.laplacian);
         other.vertex_count = self.vertex_count;
         other.eigen_cache = None;
     }
 
+    #[inline]
     pub fn convert_type<R: graph_type::GraphType>(self) -> LapGraph<R> {
         LapGraph::<R> {
             laplacian: self.laplacian,
@@ -229,8 +230,14 @@ impl<T: graph_type::GraphType> LapGraph<T> {
         }
     }
 
+    #[inline]
     pub fn erase_type(self) -> LapGraph<graph_type::Erased> {
         self.convert_type()
+    }
+
+    #[inline]
+    pub fn isolated(&self, v: usize) -> bool {
+        self.degree(v) == 0
     }
 }
 
